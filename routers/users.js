@@ -5,39 +5,47 @@ const {userValidation} = require('../validation/user');
 const bcrypt=require('bcrypt');
 
 
-router.post("/", async (req, res) => {
 
-  const {error}= userValidation(req.body);
-  if(error) return res.status(400).send(error.details[0].message);
 
-  const existance=await User.findOne({name:req.body.name});
-  if(existance) return res.status(400).send("User already exist");
-
-  const salt= await bcrypt.genSalt(10);
-  const hashpass=await bcrypt.hash(req.body.password,salt);
-
-  const user = new User({
-    name: req.body.name,
-    password: hashpass,
-  });
+router.get("/",  (req, res, next) => {
   try {
-    res.send(usersave);
-    console.log('done')
-    const usersave = await user.save();
-    
-  } 
-  catch (e) {
-    res.status(400).send(e);
-  }
-});
-
-router.get("/", async (req, res) => {
-  try {
-    const user = await User.find();
+    const user =  User.find();
     res.json(user);
   } catch (e) {
     res.json({ message: e });
   }
+});
+
+router.post("/",  (req, res, next) => {
+
+  const {error}= userValidation(req.body);
+  if(error) return res.status(400).send(error.details[0].message);
+
+   User.findOne({name:req.body.name}).then(user=>{
+    if(user){
+      console.log(user);
+      console.log('this user already exist');
+      return res.status(400).send("User already exist");
+    }
+    bcrypt.genSalt(10).then(salt=>{
+      bcrypt.hash(req.body.password,salt).then(pas=>{
+        const user1 = new User({
+          name: req.body.name,
+          password: pas
+        });
+          user1.save().then(result => {
+            res.send(user1);
+          console.log('user save');
+          }).catch(err=>{
+             res.status(400).send(err);
+          });
+      }).catch(err=>{
+        res.status(400).send(err);
+      })
+    }).catch(err=>{
+      res.status(400).send(err);
+    })
+  }).catch(e=>res.status(400).send(e))
 });
 
 router.get("/:iduser", async (req, res) => {
@@ -49,18 +57,18 @@ router.get("/:iduser", async (req, res) => {
   }
 });
 
-router.delete("/:iduser", async (req, res) => {
+router.delete("/:iduser", async (req, res, next) => {
   try {
-    const user = await User.remove({ _id: req.params.iduser });
+    const user =  User.remove({ _id: req.params.iduser });
     res.json(user);
   } catch (e) {
     res.json({ message: e });
   }
 });
 
-router.patch("/:iduser", async (req, res) => {
+router.patch("/:iduser",  (req, res, next ) => {
   try {
-    const user = await User.updateOne(
+    const user =  User.updateOne(
       { _id: req.params.iduser },
       { $set: { pass: req.body.pass } }
     );
